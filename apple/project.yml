@@ -1,0 +1,56 @@
+name: LocalLink
+options:
+  bundleIdPrefix: com.local.LocalLink
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+packages:
+  LocalLink:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+targets:
+  LocalLinkMac:
+    type: application
+    platform: macOS
+    sources:
+      - macos
+    dependencies:
+      - package: LocalLink
+        product: LocalLinkCore
+    entitlements:
+      path: macos/LocalLinkMac.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.network.client: true
+        com.apple.security.network.server: true
+    info:
+      path: macos/Info.plist
+      properties:
+        CFBundleDisplayName: LocalLink
+        CFBundleIdentifier: com.local.LocalLink.mac
+        LSApplicationCategoryType: public.app-category.utilities
+        NSLocalNetworkUsageDescription: LocalLink uses your local network to find and transfer text and files to paired devices nearby.
+        NSBonjourServices:
+          - _locallink._tcp
+  LocalLinkiOS:
+    type: application
+    platform: iOS
+    sources:
+      - ios
+    dependencies:
+      - package: LocalLink
+        product: LocalLinkCore
+    info:
+      path: ios/Info.plist
+      properties:
+        CFBundleDisplayName: LocalLink
+        CFBundleIdentifier: com.local.LocalLink.ios
+        UILaunchScreen: {}
+        UIApplicationSupportsIndirectInputEvents: true
+        NSLocalNetworkUsageDescription: LocalLink uses your local network to find and transfer text and files to paired devices nearby.
+        NSBonjourServices:
+          - _locallink._tcp

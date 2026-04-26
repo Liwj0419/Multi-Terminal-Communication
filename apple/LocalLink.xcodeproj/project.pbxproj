@@ -1,0 +1,466 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		000000000000000000001001 /* LocalLinkiOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002001 /* LocalLinkiOSApp.swift */; };
+		000000000000000000001002 /* IOSContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002002 /* IOSContentView.swift */; };
+		000000000000000000001003 /* IOSSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002003 /* IOSSupportViews.swift */; };
+		000000000000000000001004 /* LocalLinkAppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002004 /* LocalLinkAppModel.swift */; };
+		000000000000000000001005 /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002005 /* DeviceIdentity.swift */; };
+		000000000000000000001006 /* PeerModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002006 /* PeerModels.swift */; };
+		000000000000000000001007 /* TransferModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002007 /* TransferModels.swift */; };
+		000000000000000000001008 /* BonjourPeerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002008 /* BonjourPeerService.swift */; };
+		000000000000000000001009 /* PeerSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002009 /* PeerSession.swift */; };
+		000000000000000000001010 /* TransferAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002010 /* TransferAssembler.swift */; };
+		000000000000000000001011 /* DeviceIdentityStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002011 /* DeviceIdentityStore.swift */; };
+		000000000000000000001012 /* TrustedPeerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002012 /* TrustedPeerStore.swift */; };
+		000000000000000000001013 /* FrameCodec.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002013 /* FrameCodec.swift */; };
+		000000000000000000001014 /* PairingCode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002014 /* PairingCode.swift */; };
+		000000000000000000001015 /* SessionCrypto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002015 /* SessionCrypto.swift */; };
+		000000000000000000001016 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 000000000000000000002017 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		000000000000000000002001 /* LocalLinkiOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLinkiOSApp.swift; sourceTree = "<group>"; };
+		000000000000000000002002 /* IOSContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSContentView.swift; sourceTree = "<group>"; };
+		000000000000000000002003 /* IOSSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSSupportViews.swift; sourceTree = "<group>"; };
+		000000000000000000002004 /* LocalLinkAppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalLinkAppModel.swift; sourceTree = "<group>"; };
+		000000000000000000002005 /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
+		000000000000000000002006 /* PeerModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerModels.swift; sourceTree = "<group>"; };
+		000000000000000000002007 /* TransferModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferModels.swift; sourceTree = "<group>"; };
+		000000000000000000002008 /* BonjourPeerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BonjourPeerService.swift; sourceTree = "<group>"; };
+		000000000000000000002009 /* PeerSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerSession.swift; sourceTree = "<group>"; };
+		000000000000000000002010 /* TransferAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferAssembler.swift; sourceTree = "<group>"; };
+		000000000000000000002011 /* DeviceIdentityStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentityStore.swift; sourceTree = "<group>"; };
+		000000000000000000002012 /* TrustedPeerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrustedPeerStore.swift; sourceTree = "<group>"; };
+		000000000000000000002013 /* FrameCodec.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameCodec.swift; sourceTree = "<group>"; };
+		000000000000000000002014 /* PairingCode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingCode.swift; sourceTree = "<group>"; };
+		000000000000000000002015 /* SessionCrypto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCrypto.swift; sourceTree = "<group>"; };
+		000000000000000000002016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		000000000000000000002017 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		000000000000000000002100 /* LocalLink.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LocalLink.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		000000000000000000003002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		000000000000000000004000 = {
+			isa = PBXGroup;
+				children = (
+					000000000000000000004002 /* ios */,
+					000000000000000000004010 /* common */,
+					000000000000000000004099 /* Products */,
+				);
+				sourceTree = "<group>";
+			};
+			000000000000000000004002 /* ios */ = {
+				isa = PBXGroup;
+				children = (
+					000000000000000000004003 /* App */,
+				000000000000000000004004 /* Views */,
+					000000000000000000002016 /* Info.plist */,
+					000000000000000000002017 /* Assets.xcassets */,
+				);
+				path = ios;
+				sourceTree = "<group>";
+			};
+		000000000000000000004003 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002001 /* LocalLinkiOSApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		000000000000000000004004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002002 /* IOSContentView.swift */,
+				000000000000000000002003 /* IOSSupportViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+			000000000000000000004010 /* common */ = {
+				isa = PBXGroup;
+				children = (
+					000000000000000000004011 /* LocalLinkCore */,
+				);
+				path = common;
+				sourceTree = "<group>";
+			};
+		000000000000000000004011 /* LocalLinkCore */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000004012 /* AppModel */,
+				000000000000000000004013 /* Models */,
+				000000000000000000004014 /* Networking */,
+				000000000000000000004015 /* Persistence */,
+				000000000000000000004016 /* Protocol */,
+				000000000000000000004017 /* Security */,
+			);
+			path = LocalLinkCore;
+			sourceTree = "<group>";
+		};
+		000000000000000000004012 /* AppModel */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002004 /* LocalLinkAppModel.swift */,
+			);
+			path = AppModel;
+			sourceTree = "<group>";
+		};
+		000000000000000000004013 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002005 /* DeviceIdentity.swift */,
+				000000000000000000002006 /* PeerModels.swift */,
+				000000000000000000002007 /* TransferModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		000000000000000000004014 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002008 /* BonjourPeerService.swift */,
+				000000000000000000002009 /* PeerSession.swift */,
+				000000000000000000002010 /* TransferAssembler.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		000000000000000000004015 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002011 /* DeviceIdentityStore.swift */,
+				000000000000000000002012 /* TrustedPeerStore.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		000000000000000000004016 /* Protocol */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002013 /* FrameCodec.swift */,
+			);
+			path = Protocol;
+			sourceTree = "<group>";
+		};
+		000000000000000000004017 /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002014 /* PairingCode.swift */,
+				000000000000000000002015 /* SessionCrypto.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
+		000000000000000000004099 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				000000000000000000002100 /* LocalLink.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		000000000000000000000100 /* LocalLinkiOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 000000000000000000006100 /* Build configuration list for PBXNativeTarget "LocalLinkiOS" */;
+			buildPhases = (
+				000000000000000000003001 /* Sources */,
+				000000000000000000003002 /* Frameworks */,
+				000000000000000000003003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LocalLinkiOS;
+			productName = LocalLink;
+			productReference = 000000000000000000002100 /* LocalLink.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		000000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					000000000000000000000100 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+				};
+			};
+			buildConfigurationList = 000000000000000000006001 /* Build configuration list for PBXProject "LocalLink" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 000000000000000000004000;
+			minimizedProjectReferenceProxies = 1;
+			productRefGroup = 000000000000000000004099 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				000000000000000000000100 /* LocalLinkiOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		000000000000000000003003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000001016 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		000000000000000000003001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				000000000000000000001001 /* LocalLinkiOSApp.swift in Sources */,
+				000000000000000000001002 /* IOSContentView.swift in Sources */,
+				000000000000000000001003 /* IOSSupportViews.swift in Sources */,
+				000000000000000000001004 /* LocalLinkAppModel.swift in Sources */,
+				000000000000000000001005 /* DeviceIdentity.swift in Sources */,
+				000000000000000000001006 /* PeerModels.swift in Sources */,
+				000000000000000000001007 /* TransferModels.swift in Sources */,
+				000000000000000000001008 /* BonjourPeerService.swift in Sources */,
+				000000000000000000001009 /* PeerSession.swift in Sources */,
+				000000000000000000001010 /* TransferAssembler.swift in Sources */,
+				000000000000000000001011 /* DeviceIdentityStore.swift in Sources */,
+				000000000000000000001012 /* TrustedPeerStore.swift in Sources */,
+				000000000000000000001013 /* FrameCodec.swift in Sources */,
+				000000000000000000001014 /* PairingCode.swift in Sources */,
+				000000000000000000001015 /* SessionCrypto.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		000000000000000000006002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		000000000000000000006003 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		000000000000000000006101 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MZ5D5GLZ38;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+					INFOPLIST_FILE = ios/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liweijie.LocalLink;
+				PRODUCT_NAME = LocalLink;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG LOCAL_LINK_SINGLE_TARGET";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		000000000000000000006102 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = MZ5D5GLZ38;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+					INFOPLIST_FILE = ios/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.liweijie.LocalLink;
+				PRODUCT_NAME = LocalLink;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = LOCAL_LINK_SINGLE_TARGET;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		000000000000000000006001 /* Build configuration list for PBXProject "LocalLink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000006002 /* Debug */,
+				000000000000000000006003 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		000000000000000000006100 /* Build configuration list for PBXNativeTarget "LocalLinkiOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				000000000000000000006101 /* Debug */,
+				000000000000000000006102 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 000000000000000000000001 /* Project object */;
+}

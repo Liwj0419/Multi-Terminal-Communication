@@ -1,0 +1,28 @@
+.DS_Store
+DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+
+# Codex/local environment
+.codex/
+
+# Apple/Swift
+apple/.build/
+apple/.swiftpm/
+apple/dist/
+
+# Android/Gradle
+android/.gradle/
+android/.kotlin/
+android/build/
+android/app/build/
+*.apk
+
+# Windows/.NET
+windows/**/bin/
+windows/**/obj/
+.vs/
+
+# macOS local reports
+*.ips
