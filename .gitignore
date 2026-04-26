@@ -22,6 +22,7 @@ android/app/build/
 # Windows/.NET
 windows/**/bin/
 windows/**/obj/
+windows/**/publish/
 .vs/
 
 # macOS local reports

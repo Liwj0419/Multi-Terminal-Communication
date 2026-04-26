@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 
 namespace LocalLink.Windows;
 
@@ -313,7 +314,7 @@ public sealed class LocalLinkViewModel
 
     private void Install(PeerSession session)
     {
-        session.HelloReceived += (_, identity) => RunOnUi(() =>
+        session.HelloReceived += (receivedSession, identity) => RunOnUi(() =>
         {
             sessions[identity.deviceID] = session;
             ConnectedPeerIDs.Add(identity.deviceID);
@@ -322,7 +323,7 @@ public sealed class LocalLinkViewModel
             {
                 var code = PairingCode(identity);
                 pendingPairingCodes[identity.deviceID] = code;
-                _ = session.SendPairRequestAsync(code);
+                _ = receivedSession.SendPairRequestAsync(code);
             }
             Changed?.Invoke();
         });

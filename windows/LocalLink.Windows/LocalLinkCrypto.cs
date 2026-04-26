@@ -2,9 +2,9 @@ using System.Security.Cryptography;
 using Org.BouncyCastle.Crypto.Agreement;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Crypto.Generators;
-using Org.BouncyCastle.Crypto.Modes;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Security;
+using BouncyCastleChaCha20Poly1305 = Org.BouncyCastle.Crypto.Modes.ChaCha20Poly1305;
 
 namespace LocalLink.Windows;
 
@@ -34,7 +34,7 @@ public sealed class SessionCrypto
     public byte[] Seal(byte[] payload)
     {
         var nonce = RandomNumberGenerator.GetBytes(12);
-        var cipher = new ChaCha20Poly1305();
+        var cipher = new BouncyCastleChaCha20Poly1305();
         cipher.Init(true, new AeadParameters(new KeyParameter(key), 128, nonce));
         var encrypted = new byte[cipher.GetOutputSize(payload.Length)];
         var len = cipher.ProcessBytes(payload, 0, payload.Length, encrypted, 0);
@@ -51,7 +51,7 @@ public sealed class SessionCrypto
 
         var nonce = sealedPayload[..12];
         var encrypted = sealedPayload[12..];
-        var cipher = new ChaCha20Poly1305();
+        var cipher = new BouncyCastleChaCha20Poly1305();
         cipher.Init(false, new AeadParameters(new KeyParameter(key), 128, nonce));
         var output = new byte[cipher.GetOutputSize(encrypted.Length)];
         var len = cipher.ProcessBytes(encrypted, 0, encrypted.Length, output, 0);
