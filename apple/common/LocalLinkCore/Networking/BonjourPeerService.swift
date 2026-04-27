@@ -1,8 +1,10 @@
 import Foundation
+import Darwin
 import Network
 
 public final class BonjourPeerService: @unchecked Sendable {
   public static let serviceType = "_locallink._tcp"
+  private static let preferredPort: NWEndpoint.Port = 53317
 
   private let local: LocalDeviceIdentity
   private let trustedStore: TrustedPeerStoring
@@ -11,10 +13,15 @@ public final class BonjourPeerService: @unchecked Sendable {
   private var listener: NWListener?
   private var browser: NWBrowser?
   private var sessions: [UUID: PeerSession] = [:]
+  private var listenPort: UInt16?
 
   public var onDiscoveredPeersChanged: (@Sendable ([DiscoveredPeer]) -> Void)?
   public var onSession: (@Sendable (PeerSession) -> Void)?
   public var onError: (@Sendable (Error) -> Void)?
+  public var connectionAddresses: [String] {
+    guard let listenPort else { return [] }
+    return Self.localIPv4Addresses().map { "\($0):\(listenPort)" }
+  }
 
   public init(local: LocalDeviceIdentity, trustedStore: TrustedPeerStoring) {
     self.local = local
@@ -36,21 +43,29 @@ public final class BonjourPeerService: @unchecked Sendable {
   @discardableResult
   public func connect(to peer: DiscoveredPeer) -> PeerSession? {
     guard let endpoint = peer.endpoint else { return nil }
-    let session = PeerSession(connection: NWConnection(to: endpoint, using: .tcp), local: local)
+    let session = PeerSession(connection: NWConnection(to: endpoint, using: .tcp), local: local, listenPort: listenPort)
     install(session)
     session.start()
     return session
   }
 
   private func startListening() throws {
-    let listener = try NWListener(using: .tcp)
-    let txtRecord = NWTXTRecord([
+    let listener = (try? NWListener(using: .tcp, on: Self.preferredPort)) ?? (try NWListener(using: .tcp))
+    var txt: [String: String] = [
       "id": local.identity.deviceID,
       "name": local.identity.displayName,
       "platform": local.identity.platform.rawValue,
       "version": String(local.identity.protocolVersion),
       "publicKey": local.identity.publicKey
-    ])
+    ]
+    if let host = Self.localIPv4Addresses().first {
+      txt["host"] = host
+    }
+    if let port = listener.port {
+      listenPort = port.rawValue
+      txt["port"] = String(port.rawValue)
+    }
+    let txtRecord = NWTXTRecord(txt)
     let shortID = String(local.identity.deviceID.prefix(8))
     listener.service = NWListener.Service(
       name: "\(local.identity.displayName)-\(shortID)",
@@ -59,7 +74,7 @@ public final class BonjourPeerService: @unchecked Sendable {
     )
     listener.newConnectionHandler = { [weak self] connection in
       guard let self else { return }
-      let session = PeerSession(connection: connection, local: self.local)
+      let session = PeerSession(connection: connection, local: self.local, listenPort: self.listenPort)
       self.install(session)
       session.start()
     }
@@ -96,10 +111,13 @@ public final class BonjourPeerService: @unchecked Sendable {
         deviceID: identity.deviceID,
         publicKey: identity.publicKey
       )) ?? false
+      let txtRecord = result.metadata.txtRecord ?? [:]
+      let endpoint = Self.directEndpoint(from: txtRecord) ?? result.endpoint
+      let endpointDescription = Self.directEndpointDescription(from: txtRecord) ?? String(describing: result.endpoint)
       let peer = DiscoveredPeer(
         identity: identity,
-        endpoint: result.endpoint,
-        endpointDescription: String(describing: result.endpoint),
+        endpoint: endpoint,
+        endpointDescription: endpointDescription,
         isTrusted: trusted
       )
       peersByID[identity.deviceID] = peer
@@ -153,6 +171,59 @@ public final class BonjourPeerService: @unchecked Sendable {
 
   private func isLocal(endpoint: NWEndpoint) -> Bool {
     String(describing: endpoint).contains(local.identity.deviceID.prefix(8))
+  }
+
+  private static func directEndpoint(from txtRecord: [String: String]) -> NWEndpoint? {
+    guard
+      let host = txtRecord["host"],
+      let portText = txtRecord["port"],
+      let portValue = UInt16(portText),
+      let port = NWEndpoint.Port(rawValue: portValue)
+    else {
+      return nil
+    }
+    return .hostPort(host: NWEndpoint.Host(host), port: port)
+  }
+
+  private static func directEndpointDescription(from txtRecord: [String: String]) -> String? {
+    guard let host = txtRecord["host"], let port = txtRecord["port"] else { return nil }
+    return "\(host):\(port)"
+  }
+
+  private static func localIPv4Addresses() -> [String] {
+    var interfaces: UnsafeMutablePointer<ifaddrs>?
+    guard getifaddrs(&interfaces) == 0, let first = interfaces else { return [] }
+    defer { freeifaddrs(interfaces) }
+
+    var addresses: [String] = []
+    var pointer: UnsafeMutablePointer<ifaddrs>? = first
+    while let current = pointer {
+      defer { pointer = current.pointee.ifa_next }
+      let flags = Int32(current.pointee.ifa_flags)
+      guard
+        flags & IFF_UP != 0,
+        flags & IFF_LOOPBACK == 0,
+        let address = current.pointee.ifa_addr,
+        address.pointee.sa_family == UInt8(AF_INET)
+      else {
+        continue
+      }
+
+      var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+      let result = getnameinfo(
+        address,
+        socklen_t(address.pointee.sa_len),
+        &hostname,
+        socklen_t(hostname.count),
+        nil,
+        0,
+        NI_NUMERICHOST
+      )
+      if result == 0 {
+        addresses.append(String(cString: hostname))
+      }
+    }
+    return addresses
   }
 }
 

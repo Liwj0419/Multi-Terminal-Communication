@@ -66,13 +66,20 @@ struct MacSidebarView: View {
             .foregroundStyle(.secondary)
         } else {
           ForEach(model.trustedPeers) { peer in
-            Label(peer.displayName, systemImage: iconName(for: peer.platform))
-              .tag(peer.id)
-              .contextMenu {
-                Button("Forget Device", role: .destructive) {
-                  model.forget(peerID: peer.deviceID)
-                }
+            VStack(alignment: .leading, spacing: 2) {
+              Label(peer.displayName, systemImage: iconName(for: peer.platform))
+              if let host = peer.lastHost, let port = peer.lastPort {
+                Text("\(host):\(port)")
+                  .font(.caption)
+                  .foregroundStyle(.secondary)
               }
+            }
+            .tag(peer.id)
+            .contextMenu {
+              Button("Forget Device", role: .destructive) {
+                model.forget(peerID: peer.deviceID)
+              }
+            }
           }
         }
       }

@@ -6,6 +6,7 @@
         MinHeight="680"
         Width="1120"
         Height="760"
-        Background="#F7F8FB">
+        Background="#F7F8FB"
+        Icon="Assets/AppIcon.ico">
   <Grid x:Name="Root" />
 </Window>

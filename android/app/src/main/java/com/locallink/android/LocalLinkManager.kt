@@ -6,7 +6,9 @@ import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
+import java.net.Inet4Address
 import java.net.InetAddress
+import java.net.NetworkInterface
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.ExecutorService
@@ -15,6 +17,7 @@ import java.util.concurrent.Executors
 class LocalLinkManager(private val context: Context) {
   companion object {
     const val SERVICE_TYPE = "_locallink._tcp."
+    private const val DEFAULT_PORT = 53317
   }
 
   private val main = Handler(Looper.getMainLooper())
@@ -79,29 +82,48 @@ class LocalLinkManager(private val context: Context) {
   }
 
   fun connect(peer: DiscoveredPeer) {
-    if (sessions[peer.identity.deviceID] != null) return
+    val resolved = resolve(peer)
+    if (sessions[resolved.identity.deviceID] != null) return
+    if (resolved.host.isBlank() || resolved.port <= 0) {
+      error("${resolved.identity.displayName} is not currently discoverable.")
+      return
+    }
     executor.execute {
       runCatching {
-        install(PeerSession(Socket(peer.host, peer.port), local, executor, ::onHello, ::onFrame, ::onClosed, ::onError))
+        install(PeerSession(Socket(resolved.host, resolved.port), local, waitForPort(), executor, ::onHello, ::onFrame, ::onClosed, ::onError))
+      }.onFailure { onError(it) }
+    }
+  }
+
+  fun connectManually(endpoint: String) {
+    val parsed = parseEndpoint(endpoint)
+    if (parsed == null) {
+      error("Enter an address like 192.168.1.20:53317.")
+      return
+    }
+    executor.execute {
+      runCatching {
+        install(PeerSession(Socket(parsed.first, parsed.second), local, waitForPort(), executor, ::onHello, ::onFrame, ::onClosed, ::onError))
       }.onFailure { onError(it) }
     }
   }
 
   fun pair(peer: DiscoveredPeer) {
-    if (stores.isTrusted(peer.identity)) {
-      connect(peer)
+    val resolved = resolve(peer)
+    if (stores.isTrusted(resolved.identity)) {
+      connect(resolved)
       return
     }
-    val code = LocalLinkHashes.pairingCode(local.identity.publicKey, peer.identity.publicKey)
-    pendingPairCodes[peer.identity.deviceID] = code
-    pendingPairRequests += peer.identity.deviceID
-    connect(peer)
-    sessions[peer.identity.deviceID]?.sendPairRequest(code)
+    val code = LocalLinkHashes.pairingCode(local.identity.publicKey, resolved.identity.publicKey)
+    pendingPairCodes[resolved.identity.deviceID] = code
+    pendingPairRequests += resolved.identity.deviceID
+    connect(resolved)
+    sessions[resolved.identity.deviceID]?.sendPairRequest(code)
   }
 
   fun acceptPair(identity: DeviceIdentity) {
     val code = pendingPairCodes[identity.deviceID] ?: LocalLinkHashes.pairingCode(local.identity.publicKey, identity.publicKey)
-    stores.saveTrusted(identity)
+    saveTrustedEndpoint(identity)
     markTrusted(identity)
     sessions[identity.deviceID]?.sendPairAccepted(code)
     notifyChanged()
@@ -179,7 +201,12 @@ class LocalLinkManager(private val context: Context) {
     notifyChanged()
   }
 
-  fun trustedIdentities(): List<DeviceIdentity> = stores.trustedPeers()
+  fun trustedIdentities(): List<TrustedPeer> = stores.trustedPeers()
+
+  fun connectionAddresses(): List<String> {
+    val port = server?.localPort ?: return emptyList()
+    return localIPv4Addresses().map { "$it:$port" }
+  }
 
   fun clearMessages(peerID: String) {
     messages.removeAll { it.peerID == peerID }
@@ -196,11 +223,11 @@ class LocalLinkManager(private val context: Context) {
 
   private fun startServer() {
     executor.execute {
-      val socket = ServerSocket(0)
+      val socket = runCatching { ServerSocket(DEFAULT_PORT) }.getOrElse { ServerSocket(0) }
       server = socket
       while (!socket.isClosed) {
         runCatching {
-          install(PeerSession(socket.accept(), local, executor, ::onHello, ::onFrame, ::onClosed, ::onError))
+          install(PeerSession(socket.accept(), local, socket.localPort, executor, ::onHello, ::onFrame, ::onClosed, ::onError))
         }.onFailure {
           if (!socket.isClosed) onError(it)
         }
@@ -218,6 +245,8 @@ class LocalLinkManager(private val context: Context) {
       setAttribute("platform", "android")
       setAttribute("version", local.identity.protocolVersion.toString())
       setAttribute("publicKey", local.identity.publicKey)
+      localIPv4Addresses().firstOrNull()?.let { setAttribute("host", it) }
+      setAttribute("port", port.toString())
     }
     val listener = object : NsdManager.RegistrationListener {
       override fun onServiceRegistered(serviceInfo: NsdServiceInfo) {}
@@ -233,6 +262,14 @@ class LocalLinkManager(private val context: Context) {
     while (server?.localPort == null) Thread.sleep(20)
     return server!!.localPort
   }
+
+  private fun localIPv4Addresses(): List<String> =
+    NetworkInterface.getNetworkInterfaces().asSequence()
+      .filter { it.isUp && !it.isLoopback && !it.isVirtual }
+      .flatMap { it.inetAddresses.asSequence() }
+      .filterIsInstance<Inet4Address>()
+      .mapNotNull { it.hostAddress }
+      .toList()
 
   private fun discover() {
     val listener = object : NsdManager.DiscoveryListener {
@@ -273,7 +310,11 @@ class LocalLinkManager(private val context: Context) {
       publicKey = attrs["publicKey"] ?: "",
       protocolVersion = attrs["version"]?.toIntOrNull() ?: 1
     )
-    val peer = DiscoveredPeer(identity, host.hostAddress ?: return, service.port, stores.isTrusted(identity))
+    val hostAddress = host.hostAddress ?: return
+    val peer = DiscoveredPeer(identity, hostAddress, service.port, stores.isTrusted(identity))
+    if (peer.trusted) {
+      stores.saveTrusted(identity, hostAddress, service.port)
+    }
     peers.removeAll { it.identity.deviceID == id }
     peers += peer
     notifyChanged()
@@ -286,6 +327,9 @@ class LocalLinkManager(private val context: Context) {
   private fun onHello(session: PeerSession, identity: DeviceIdentity) {
     sessions[identity.deviceID] = session
     connectedPeerIDs += identity.deviceID
+    if (stores.isTrusted(identity)) {
+      saveTrustedEndpoint(identity, session)
+    }
     if (pendingPairRequests.remove(identity.deviceID)) {
       val code = pendingPairCodes[identity.deviceID] ?: LocalLinkHashes.pairingCode(local.identity.publicKey, identity.publicKey)
       pendingPairCodes[identity.deviceID] = code
@@ -293,12 +337,10 @@ class LocalLinkManager(private val context: Context) {
     }
     val peer = peers.firstOrNull { it.identity.deviceID == identity.deviceID }
     if (peer == null && identity.deviceID != local.identity.deviceID) {
-      peers += DiscoveredPeer(identity, sessionHost(session), 0, stores.isTrusted(identity))
+      peers += DiscoveredPeer(identity, session.remoteHost, session.remoteListenPort, stores.isTrusted(identity))
     }
     notifyChanged()
   }
-
-  private fun sessionHost(session: PeerSession): String = "connected"
 
   private fun onFrame(session: PeerSession, frame: WireFrame, identity: DeviceIdentity?) {
     identity ?: return
@@ -311,7 +353,7 @@ class LocalLinkManager(private val context: Context) {
       }
       FrameKind.pairAccepted, FrameKind.pairConfirm -> {
         if (frame.metadata["code"] == pendingPairCodes[identity.deviceID]) {
-          stores.saveTrusted(identity)
+          saveTrustedEndpoint(identity, session)
           markTrusted(identity)
           pendingPairCodes.remove(identity.deviceID)
           notifyChanged()
@@ -382,6 +424,41 @@ class LocalLinkManager(private val context: Context) {
       }
     }
     connectedPeerIDs += identity.deviceID
+  }
+
+  private fun resolve(peer: DiscoveredPeer): DiscoveredPeer {
+    val discovered = peers.firstOrNull { it.identity.deviceID == peer.identity.deviceID }
+    if (discovered != null) return discovered
+    val trusted = stores.trustedPeers().firstOrNull { it.deviceID == peer.identity.deviceID }
+    return trusted?.let { peerFor(it) } ?: peer
+  }
+
+  fun peerFor(trusted: TrustedPeer): DiscoveredPeer =
+    peers.firstOrNull { it.identity.deviceID == trusted.deviceID }
+      ?: DiscoveredPeer(trusted.identity, trusted.lastHost.orEmpty(), trusted.lastPort, trusted = true)
+
+  private fun saveTrustedEndpoint(identity: DeviceIdentity, session: PeerSession? = sessions[identity.deviceID]) {
+    val peer = peers.firstOrNull { it.identity.deviceID == identity.deviceID }
+    val host = peer?.host?.takeIf { it.isNotBlank() } ?: session?.remoteHost
+    val port = peer?.port?.takeIf { it > 0 } ?: session?.remoteListenPort ?: 0
+    stores.saveTrusted(identity, host, port)
+  }
+
+  private fun parseEndpoint(endpoint: String): Pair<String, Int>? {
+    val trimmed = endpoint.trim()
+    if (trimmed.isBlank()) return null
+    val separator = trimmed.lastIndexOf(':')
+    val host: String
+    val port: Int
+    if (separator > 0) {
+      host = trimmed.substring(0, separator).trim().trim('[', ']')
+      port = trimmed.substring(separator + 1).toIntOrNull() ?: return null
+    } else {
+      host = trimmed
+      port = DEFAULT_PORT
+    }
+    if (host.isBlank() || port !in 1..65535) return null
+    return host to port
   }
 
   private fun upsertTransfer(item: TransferItem) {

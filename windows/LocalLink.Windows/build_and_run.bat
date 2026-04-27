@@ -38,7 +38,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\LocalLink.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.Description='LocalLink'; $s.Save()"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$s=(New-Object -ComObject WScript.Shell).CreateShortcut('%SHORTCUT%'); $s.TargetPath='%INSTALL_DIR%\LocalLink.exe'; $s.WorkingDirectory='%INSTALL_DIR%'; $s.Description='LocalLink'; $s.IconLocation='%INSTALL_DIR%\LocalLink.exe,0'; $s.Save()"
 
 echo.
 echo Done.

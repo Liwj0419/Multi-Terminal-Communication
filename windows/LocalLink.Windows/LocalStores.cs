@@ -63,12 +63,14 @@ public sealed class LocalStores
     public bool IsTrusted(DeviceIdentity identity) =>
         LoadTrustedPeers().Any(peer => peer.deviceID == identity.deviceID && peer.publicKey == identity.publicKey);
 
-    public void SaveTrusted(DeviceIdentity identity)
+    public void SaveTrusted(DeviceIdentity identity, string? host = null, int port = 0)
     {
-        var peers = LoadTrustedPeers()
-            .Where(peer => peer.deviceID != identity.deviceID)
-            .ToList();
-        peers.Add(new TrustedPeer(identity.deviceID, identity.displayName, identity.platform, identity.publicKey));
+        var peers = LoadTrustedPeers();
+        var existing = peers.FirstOrDefault(peer => peer.deviceID == identity.deviceID);
+        peers = peers.Where(peer => peer.deviceID != identity.deviceID).ToList();
+        var lastHost = string.IsNullOrWhiteSpace(host) ? existing?.lastHost : host;
+        var lastPort = port > 0 ? port : existing?.lastPort ?? 0;
+        peers.Add(new TrustedPeer(identity.deviceID, identity.displayName, identity.platform, identity.publicKey, lastHost, lastPort));
         SaveList(trustedPath, peers);
     }
 

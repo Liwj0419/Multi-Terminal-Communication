@@ -9,6 +9,7 @@ import java.util.concurrent.ExecutorService
 class PeerSession(
   private val socket: Socket,
   private val local: LocalIdentity,
+  private val listenPort: Int,
   private val executor: ExecutorService,
   private val onHello: (PeerSession, DeviceIdentity) -> Unit,
   private val onFrame: (PeerSession, WireFrame, DeviceIdentity?) -> Unit,
@@ -17,6 +18,10 @@ class PeerSession(
 ) {
   @Volatile var remoteIdentity: DeviceIdentity? = null
     private set
+  @Volatile var remoteListenPort: Int = 0
+    private set
+  val remoteHost: String
+    get() = socket.inetAddress?.hostAddress ?: ""
   @Volatile private var crypto: SessionCrypto? = null
   @Volatile private var running = true
 
@@ -34,7 +39,7 @@ class PeerSession(
 
   fun sendHello() {
     val payload = local.identity.toJson().toString().toByteArray(Charsets.UTF_8)
-    send(FrameKind.hello, payload = payload)
+    send(FrameKind.hello, metadata = mapOf("listenPort" to listenPort.toString()), payload = payload)
   }
 
   fun sendPairRequest(code: String) {
@@ -148,6 +153,7 @@ class PeerSession(
     if (clearFrame.kind == FrameKind.hello) {
       val identity = DeviceIdentity.fromJson(JSONObject(String(clearFrame.payload, Charsets.UTF_8)))
       remoteIdentity = identity
+      remoteListenPort = clearFrame.metadata["listenPort"]?.toIntOrNull() ?: remoteListenPort
       crypto = runCatching { SessionCrypto(local.privateKey, identity.publicKey) }.getOrNull()
       onHello(this, identity)
     }

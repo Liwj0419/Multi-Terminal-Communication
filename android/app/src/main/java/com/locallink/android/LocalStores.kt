@@ -36,25 +36,57 @@ class LocalStores(private val context: Context) {
     return current.copy(identity = current.identity.copy(displayName = trimmed))
   }
 
-  fun trustedPeers(): List<DeviceIdentity> {
+  fun trustedPeers(): List<TrustedPeer> {
     val array = JSONArray(prefs.getString("trustedPeers", "[]"))
-    return (0 until array.length()).map { DeviceIdentity.fromJson(array.getJSONObject(it)) }
+    return (0 until array.length()).map { index ->
+      val json = array.getJSONObject(index)
+      if (json.has("identity")) {
+        TrustedPeer(
+          identity = DeviceIdentity.fromJson(json.getJSONObject("identity")),
+          lastHost = json.optString("lastHost", "").ifBlank { null },
+          lastPort = json.optInt("lastPort", 0)
+        )
+      } else {
+        TrustedPeer(DeviceIdentity.fromJson(json))
+      }
+    }
   }
 
   fun isTrusted(identity: DeviceIdentity): Boolean =
     trustedPeers().any { it.deviceID == identity.deviceID && it.publicKey == identity.publicKey }
 
-  fun saveTrusted(identity: DeviceIdentity) {
-    val peers = trustedPeers().filterNot { it.deviceID == identity.deviceID }.toMutableList()
-    peers += identity
+  fun trustedPeer(identity: DeviceIdentity): TrustedPeer? =
+    trustedPeers().firstOrNull { it.deviceID == identity.deviceID && it.publicKey == identity.publicKey }
+
+  fun saveTrusted(identity: DeviceIdentity, host: String? = null, port: Int = 0) {
+    val current = trustedPeers()
+    val existing = current.firstOrNull { it.deviceID == identity.deviceID }
+    val peers = current.filterNot { it.deviceID == identity.deviceID }.toMutableList()
+    val lastHost = host?.takeIf { it.isNotBlank() } ?: existing?.lastHost
+    val lastPort = if (port > 0) port else existing?.lastPort ?: 0
+    peers += TrustedPeer(identity, lastHost, lastPort)
     val array = JSONArray()
-    peers.forEach { array.put(it.toJson()) }
+    peers.forEach { peer ->
+      array.put(
+        JSONObject()
+          .put("identity", peer.identity.toJson())
+          .put("lastHost", peer.lastHost ?: "")
+          .put("lastPort", peer.lastPort)
+      )
+    }
     prefs.edit().putString("trustedPeers", array.toString()).apply()
   }
 
   fun forget(deviceID: String) {
     val array = JSONArray()
-    trustedPeers().filterNot { it.deviceID == deviceID }.forEach { array.put(it.toJson()) }
+    trustedPeers().filterNot { it.deviceID == deviceID }.forEach { peer ->
+      array.put(
+        JSONObject()
+          .put("identity", peer.identity.toJson())
+          .put("lastHost", peer.lastHost ?: "")
+          .put("lastPort", peer.lastPort)
+      )
+    }
     prefs.edit().putString("trustedPeers", array.toString()).apply()
   }
 

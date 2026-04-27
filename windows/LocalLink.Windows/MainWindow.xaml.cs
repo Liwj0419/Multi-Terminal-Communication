@@ -158,7 +158,7 @@ public partial class MainWindow : Window
         }
         else
         {
-            actions.Children.Add(ActionButton("Connect", !string.IsNullOrWhiteSpace(peer.host), () => model.Connect(peer), false));
+            actions.Children.Add(ActionButton("Connect", !string.IsNullOrWhiteSpace(peer.host) && peer.port > 0, () => model.Connect(peer), false));
         }
         Grid.SetColumn(actions, 1);
         grid.Children.Add(actions);
@@ -354,12 +354,41 @@ public partial class MainWindow : Window
         stack.Children.Add(name);
         stack.Children.Add(ActionButton("Save Name", true, () => model.UpdateDeviceName(name.Text), false));
         stack.Children.Add(Text($"ID {model.LocalIdentity.deviceID[..8]}", muted, 13));
+        stack.Children.Add(SectionTitle("Connection"));
+        var addresses = model.ConnectionAddresses.ToList();
+        stack.Children.Add(Text(addresses.Count == 0 ? "Start LocalLink to show this device address." : string.Join("\n", addresses), muted, 13));
+        var manual = new TextBox
+        {
+            Height = 36,
+            Margin = new Thickness(0, 8, 0, 8),
+            VerticalContentAlignment = VerticalAlignment.Center,
+            BorderBrush = line,
+            Background = surface
+        };
+        manual.KeyDown += (_, e) =>
+        {
+            if (e.Key == System.Windows.Input.Key.Enter)
+            {
+                model.ConnectManually(manual.Text);
+                window.Close();
+            }
+        };
+        stack.Children.Add(manual);
+        stack.Children.Add(ActionButton("Connect Manually", true, () =>
+        {
+            model.ConnectManually(manual.Text);
+            window.Close();
+        }, false));
         stack.Children.Add(SectionTitle("Trusted Devices"));
         foreach (var peer in model.TrustedPeers)
         {
             var card = new StackPanel();
             card.Children.Add(Text(peer.displayName, ink, 15, true));
             card.Children.Add(Text($"{peer.platform}  {peer.deviceID[..8]}", muted, 13));
+            if (!string.IsNullOrWhiteSpace(peer.lastHost) && peer.lastPort > 0)
+            {
+                card.Children.Add(Text($"Last endpoint {peer.lastHost}:{peer.lastPort}", muted, 12));
+            }
             var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
             actions.Children.Add(ActionButton("Clear Messages", true, () => model.ClearMessages(peer.deviceID), false));
             actions.Children.Add(ActionButton("Clear Transfers", true, () => model.ClearTransfers(peer.deviceID), false));

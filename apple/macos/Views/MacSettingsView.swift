@@ -4,6 +4,7 @@ import SwiftUI
 struct MacSettingsView: View {
   @Bindable var model: LocalLinkAppModel
   @State private var deviceName = ""
+  @State private var manualEndpoint = ""
 
   var body: some View {
     Form {
@@ -15,6 +16,19 @@ struct MacSettingsView: View {
         Button("Save Name") {
           model.updateDeviceName(deviceName)
         }
+      }
+
+      Section("Connection") {
+        if model.connectionAddresses.isEmpty {
+          Text("Start LocalLink to show this device address.")
+            .foregroundStyle(.secondary)
+        } else {
+          Text(model.connectionAddresses.joined(separator: "\n"))
+            .textSelection(.enabled)
+        }
+        TextField("192.168.1.20:53317", text: $manualEndpoint)
+          .onSubmit(connectManually)
+        Button("Connect Manually", action: connectManually)
       }
 
       Section("Trusted Devices") {
@@ -44,5 +58,10 @@ struct MacSettingsView: View {
     .onAppear {
       deviceName = model.localIdentity?.displayName ?? ""
     }
+  }
+
+  private func connectManually() {
+    model.connectManually(to: manualEndpoint)
+    manualEndpoint = ""
   }
 }

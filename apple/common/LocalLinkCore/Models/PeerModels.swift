@@ -10,6 +10,8 @@ public struct TrustedPeer: Codable, Equatable, Identifiable, Sendable {
   public var publicKey: String
   public var pairedAt: Date
   public var lastSeenAt: Date?
+  public var lastHost: String?
+  public var lastPort: UInt16?
 
   public init(
     deviceID: String,
@@ -17,7 +19,9 @@ public struct TrustedPeer: Codable, Equatable, Identifiable, Sendable {
     platform: DevicePlatform,
     publicKey: String,
     pairedAt: Date = Date(),
-    lastSeenAt: Date? = nil
+    lastSeenAt: Date? = nil,
+    lastHost: String? = nil,
+    lastPort: UInt16? = nil
   ) {
     self.deviceID = deviceID
     self.displayName = displayName
@@ -25,6 +29,8 @@ public struct TrustedPeer: Codable, Equatable, Identifiable, Sendable {
     self.publicKey = publicKey
     self.pairedAt = pairedAt
     self.lastSeenAt = lastSeenAt
+    self.lastHost = lastHost
+    self.lastPort = lastPort
   }
 }
 
@@ -59,14 +65,22 @@ public struct DiscoveredPeer: Identifiable, Equatable, @unchecked Sendable {
 }
 
 public extension TrustedPeer {
-  init(identity: DeviceIdentity, pairedAt: Date = Date(), lastSeenAt: Date? = nil) {
+  init(
+    identity: DeviceIdentity,
+    pairedAt: Date = Date(),
+    lastSeenAt: Date? = nil,
+    lastHost: String? = nil,
+    lastPort: UInt16? = nil
+  ) {
     self.init(
       deviceID: identity.deviceID,
       displayName: identity.displayName,
       platform: identity.platform,
       publicKey: identity.publicKey,
       pairedAt: pairedAt,
-      lastSeenAt: lastSeenAt
+      lastSeenAt: lastSeenAt,
+      lastHost: lastHost,
+      lastPort: lastPort
     )
   }
 }

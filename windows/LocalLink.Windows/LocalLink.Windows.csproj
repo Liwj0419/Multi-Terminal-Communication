@@ -7,9 +7,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>LocalLink</AssemblyName>
     <RootNamespace>LocalLink.Windows</RootNamespace>
+    <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\AppIcon.ico" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
   </ItemGroup>
 </Project>

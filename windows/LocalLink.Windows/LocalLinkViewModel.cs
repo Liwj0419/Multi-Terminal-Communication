@@ -30,6 +30,10 @@ public sealed class LocalLinkViewModel
     public ObservableCollection<TransferItem> Transfers { get; private set; }
     public HashSet<string> ConnectedPeerIDs { get; } = new();
     public bool IsRunning { get; private set; }
+    public IReadOnlyList<string> ConnectionAddresses =>
+        service is null || service.Port <= 0
+            ? Array.Empty<string>()
+            : MdnsPeerService.LocalAddresses.Select(address => $"{address}:{service.Port}").ToList();
 
     public event Action? Changed;
     public event Action<string>? Error;
@@ -116,7 +120,7 @@ public sealed class LocalLinkViewModel
     public void ConfirmPairing(DeviceIdentity identity)
     {
         var code = pendingPairingCodes.GetValueOrDefault(identity.deviceID) ?? PairingCode(identity);
-        CompletePairing(identity);
+        CompletePairing(identity, sessions.GetValueOrDefault(identity.deviceID));
         if (sessions.TryGetValue(identity.deviceID, out var session))
         {
             _ = session.SendPairAcceptedAsync(code);
@@ -140,6 +144,30 @@ public sealed class LocalLinkViewModel
         try
         {
             Install(service.Connect(peer));
+        }
+        catch (Exception ex)
+        {
+            Error?.Invoke(ex.Message);
+        }
+    }
+
+    public void ConnectManually(string endpoint)
+    {
+        if (service is null)
+        {
+            Error?.Invoke("Start LocalLink before connecting manually.");
+            return;
+        }
+
+        if (!TryParseEndpoint(endpoint, out var host, out var port))
+        {
+            Error?.Invoke("Enter an address like 192.168.1.20:53317.");
+            return;
+        }
+
+        try
+        {
+            Install(service.Connect(host, port));
         }
         catch (Exception ex)
         {
@@ -299,8 +327,8 @@ public sealed class LocalLinkViewModel
             ? peer
             : new DiscoveredPeer(
                 new DeviceIdentity(trusted.deviceID, trusted.displayName, trusted.platform, trusted.publicKey),
-                "",
-                0,
+                trusted.lastHost ?? "",
+                trusted.lastPort,
                 true);
     }
 
@@ -308,8 +336,8 @@ public sealed class LocalLinkViewModel
         DiscoveredPeers.FirstOrDefault(peer => peer.identity.deviceID == trusted.deviceID) ??
         new DiscoveredPeer(
             new DeviceIdentity(trusted.deviceID, trusted.displayName, trusted.platform, trusted.publicKey),
-            "",
-            0,
+            trusted.lastHost ?? "",
+            trusted.lastPort,
             true);
 
     private void Install(PeerSession session)
@@ -318,7 +346,12 @@ public sealed class LocalLinkViewModel
         {
             sessions[identity.deviceID] = session;
             ConnectedPeerIDs.Add(identity.deviceID);
-            MergeRemoteIdentity(identity, session.EndpointDescription);
+            MergeRemoteIdentity(identity, session);
+            if (IsTrusted(identity) && !string.IsNullOrWhiteSpace(session.RemoteHost) && session.RemoteListenPort > 0)
+            {
+                stores.SaveTrusted(identity, session.RemoteHost, session.RemoteListenPort);
+                TrustedPeers = new ObservableCollection<TrustedPeer>(stores.LoadTrustedPeers());
+            }
             if (pendingPairRequests.Remove(identity.deviceID))
             {
                 var code = PairingCode(identity);
@@ -365,7 +398,7 @@ public sealed class LocalLinkViewModel
             case FrameKind.pairConfirm:
                 if (frame.Header.metadata.GetValueOrDefault("code") == pendingPairingCodes.GetValueOrDefault(identity.deviceID))
                 {
-                    CompletePairing(identity);
+                    CompletePairing(identity, session);
                 }
                 else
                 {
@@ -434,9 +467,17 @@ public sealed class LocalLinkViewModel
         }
     }
 
-    private void CompletePairing(DeviceIdentity identity)
+    private void CompletePairing(DeviceIdentity identity, PeerSession? session = null)
     {
-        stores.SaveTrusted(identity);
+        var knownPeer = DiscoveredPeers.FirstOrDefault(peer => peer.identity.deviceID == identity.deviceID);
+        var host = knownPeer?.host;
+        var port = knownPeer?.port ?? 0;
+        if ((string.IsNullOrWhiteSpace(host) || port <= 0) && session is not null)
+        {
+            host = session.RemoteHost;
+            port = session.RemoteListenPort;
+        }
+        stores.SaveTrusted(identity, host, port);
         TrustedPeers = new ObservableCollection<TrustedPeer>(stores.LoadTrustedPeers());
         DiscoveredPeers = new ObservableCollection<DiscoveredPeer>(DiscoveredPeers.Select(peer =>
             peer.identity.deviceID == identity.deviceID ? peer with { isTrusted = true } : peer));
@@ -457,6 +498,24 @@ public sealed class LocalLinkViewModel
             return trusted is null ? peer : peer with { isTrusted = true };
         }).ToList();
 
+        var trustedEndpointsChanged = false;
+        foreach (var peer in merged.Where(peer => peer.isTrusted && !string.IsNullOrWhiteSpace(peer.host) && peer.port > 0))
+        {
+            var trusted = TrustedPeers.FirstOrDefault(item => item.deviceID == peer.identity.deviceID);
+            if (trusted is null || trusted.lastHost == peer.host && trusted.lastPort == peer.port)
+            {
+                continue;
+            }
+
+            stores.SaveTrusted(peer.identity, peer.host, peer.port);
+            trustedEndpointsChanged = true;
+        }
+
+        if (trustedEndpointsChanged)
+        {
+            TrustedPeers = new ObservableCollection<TrustedPeer>(stores.LoadTrustedPeers());
+        }
+
         foreach (var existing in DiscoveredPeers.Where(peer => ConnectedPeerIDs.Contains(peer.identity.deviceID)))
         {
             if (merged.All(peer => peer.identity.deviceID != existing.identity.deviceID))
@@ -468,12 +527,13 @@ public sealed class LocalLinkViewModel
         return merged;
     }
 
-    private void MergeRemoteIdentity(DeviceIdentity identity, string endpointDescription)
+    private void MergeRemoteIdentity(DeviceIdentity identity, PeerSession session)
     {
         var trusted = IsTrusted(identity);
         var existing = DiscoveredPeers.FirstOrDefault(peer => peer.identity.deviceID == identity.deviceID);
-        var host = existing?.host ?? "";
-        var port = existing?.port ?? 0;
+        var trustedPeer = TrustedPeers.FirstOrDefault(peer => peer.deviceID == identity.deviceID);
+        var host = existing?.host ?? trustedPeer?.lastHost ?? session.RemoteHost;
+        var port = existing?.port > 0 ? existing.port : trustedPeer?.lastPort > 0 ? trustedPeer.lastPort : session.RemoteListenPort;
         DiscoveredPeers = new ObservableCollection<DiscoveredPeer>(
             DiscoveredPeers.Where(peer => peer.identity.deviceID != identity.deviceID));
         DiscoveredPeers.Add(new DiscoveredPeer(identity, host, port, trusted));
@@ -558,6 +618,30 @@ public sealed class LocalLinkViewModel
         }
 
         return Path.Combine(directory, $"{Guid.NewGuid()}-{fileName}");
+    }
+
+    private static bool TryParseEndpoint(string endpoint, out string host, out int port)
+    {
+        host = "";
+        port = 53317;
+        var trimmed = endpoint.Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return false;
+        }
+
+        var separator = trimmed.LastIndexOf(':');
+        if (separator > 0 && int.TryParse(trimmed[(separator + 1)..], out var parsedPort))
+        {
+            host = trimmed[..separator].Trim().Trim('[', ']');
+            port = parsedPort;
+        }
+        else
+        {
+            host = trimmed;
+        }
+
+        return !string.IsNullOrWhiteSpace(host) && port is > 0 and <= 65535;
     }
 
     private static void RunOnUi(Action action)

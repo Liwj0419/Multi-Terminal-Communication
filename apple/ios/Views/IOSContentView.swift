@@ -49,7 +49,14 @@ struct IOSContentView: View {
               NavigationLink {
                 IOSPeerDetailView(model: model, peer: model.peer(for: peer))
               } label: {
-                Label(peer.displayName, systemImage: iconName(for: peer.platform))
+                VStack(alignment: .leading, spacing: 2) {
+                  Label(peer.displayName, systemImage: iconName(for: peer.platform))
+                  if let host = peer.lastHost, let port = peer.lastPort {
+                    Text("\(host):\(port)")
+                      .font(.caption)
+                      .foregroundStyle(.secondary)
+                  }
+                }
               }
               .swipeActions {
                 Button("Clear Messages", role: .destructive) {
@@ -378,6 +385,7 @@ struct IOSPairingSheet: View {
 struct IOSSettingsView: View {
   @Bindable var model: LocalLinkAppModel
   @State private var deviceName = ""
+  @State private var manualEndpoint = ""
 
   var body: some View {
     Form {
@@ -385,6 +393,24 @@ struct IOSSettingsView: View {
         TextField("Device name", text: $deviceName)
         Button("Save Name") {
           model.updateDeviceName(deviceName)
+        }
+      }
+
+      Section("Connection") {
+        if model.connectionAddresses.isEmpty {
+          Text("Start LocalLink to show this device address.")
+            .foregroundStyle(.secondary)
+        } else {
+          Text(model.connectionAddresses.joined(separator: "\n"))
+            .textSelection(.enabled)
+        }
+        TextField("192.168.1.20:53317", text: $manualEndpoint)
+          .textInputAutocapitalization(.never)
+          .autocorrectionDisabled()
+          .keyboardType(.numbersAndPunctuation)
+        Button("Connect Manually") {
+          model.connectManually(to: manualEndpoint)
+          manualEndpoint = ""
         }
       }
 

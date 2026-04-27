@@ -65,7 +65,9 @@ public sealed record TrustedPeer(
     string deviceID,
     string displayName,
     DevicePlatform platform,
-    string publicKey);
+    string publicKey,
+    string? lastHost = null,
+    int lastPort = 0);
 
 public sealed record ConversationMessage(
     string peerID,

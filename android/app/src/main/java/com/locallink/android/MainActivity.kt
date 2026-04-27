@@ -149,23 +149,51 @@ class MainActivity : Activity() {
       }
     )
 
+    content.addView(sectionTitle("Connection"))
+    content.addView(
+      card().apply {
+        val addresses = manager.connectionAddresses()
+        addView(label(if (addresses.isEmpty()) "Start LocalLink to show this device address." else addresses.joinToString("\n"), muted, 13f, false))
+        val endpointInput = EditText(this@MainActivity).apply {
+          hint = "192.168.1.20:53317"
+          textSize = 16f
+          setSingleLine(true)
+          inputType = InputType.TYPE_CLASS_TEXT
+          setPadding(dp(14), dp(8), dp(14), dp(8))
+          background = rounded(Color.rgb(246, 248, 252), dp(12), line)
+        }
+        addView(endpointInput, blockParams(top = dp(10)))
+        addView(
+          primaryButton("Connect Manually", true) {
+            manager.connectManually(endpointInput.text.toString())
+            showingSettings = false
+            render()
+          },
+          blockParams(top = dp(10))
+        )
+      }
+    )
+
     content.addView(sectionTitle("Trusted Devices"))
     val trusted = manager.trustedIdentities()
     if (trusted.isEmpty()) {
       content.addView(emptyCard("No paired devices"))
     } else {
-      trusted.forEach { identity ->
+      trusted.forEach { trustedPeer ->
         content.addView(
           card().apply {
-            addView(label(identity.displayName, ink, 16f, true))
-            addView(label("${identity.platform}  ${identity.deviceID.take(8)}", muted, 13f, false))
+            addView(label(trustedPeer.displayName, ink, 16f, true))
+            addView(label("${trustedPeer.platform}  ${trustedPeer.deviceID.take(8)}", muted, 13f, false))
+            if (!trustedPeer.lastHost.isNullOrBlank() && trustedPeer.lastPort > 0) {
+              addView(label("Last endpoint ${trustedPeer.lastHost}:${trustedPeer.lastPort}", muted, 12f, false))
+            }
             val actions = LinearLayout(this@MainActivity).apply {
               orientation = LinearLayout.HORIZONTAL
               setPadding(0, dp(10), 0, 0)
             }
-            actions.addView(actionButton("Clear Messages", true) { manager.clearMessages(identity.deviceID) })
-            actions.addView(actionButton("Clear Transfers", true) { manager.clearTransfers(identity.deviceID) })
-            actions.addView(actionButton("Forget", true, danger = true) { manager.forget(identity.deviceID) })
+            actions.addView(actionButton("Clear Messages", true) { manager.clearMessages(trustedPeer.deviceID) })
+            actions.addView(actionButton("Clear Transfers", true) { manager.clearTransfers(trustedPeer.deviceID) })
+            actions.addView(actionButton("Forget", true, danger = true) { manager.forget(trustedPeer.deviceID) })
             addView(actions)
           }
         )
@@ -252,11 +280,11 @@ class MainActivity : Activity() {
       content.addView(emptyCard("No paired devices"))
       return
     }
-    trusted.forEach { identity ->
-      val peer = peerFor(identity)
+    trusted.forEach { trustedPeer ->
+      val peer = peerFor(trustedPeer)
       content.addView(peerRow(peer).apply {
         setOnClickListener {
-          selectedPeerID = identity.deviceID
+          selectedPeerID = trustedPeer.deviceID
           selectedPanel = AndroidPanel.Messages
           render()
         }
@@ -339,7 +367,7 @@ class MainActivity : Activity() {
           )
         } else {
           addView(
-            primaryButton("Connect", peer.host.isNotBlank()) { manager.connect(peer) },
+            primaryButton("Connect", peer.host.isNotBlank() && peer.port > 0) { manager.connect(peer) },
             blockParams(top = dp(12))
           )
         }
@@ -580,9 +608,7 @@ class MainActivity : Activity() {
         ?: manager.trustedIdentities().firstOrNull { it.deviceID == id }?.let { peerFor(it) }
     }
 
-  private fun peerFor(identity: DeviceIdentity): DiscoveredPeer =
-    manager.peers.firstOrNull { it.identity.deviceID == identity.deviceID }
-      ?: DiscoveredPeer(identity, "", 0, trusted = true)
+  private fun peerFor(peer: TrustedPeer): DiscoveredPeer = manager.peerFor(peer)
 
   private fun platformIcon(platform: String): String =
     when (platform) {

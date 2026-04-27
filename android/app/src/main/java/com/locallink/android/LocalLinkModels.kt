@@ -58,6 +58,17 @@ data class DiscoveredPeer(
   val trusted: Boolean = false
 )
 
+data class TrustedPeer(
+  val identity: DeviceIdentity,
+  val lastHost: String? = null,
+  val lastPort: Int = 0
+) {
+  val deviceID: String get() = identity.deviceID
+  val displayName: String get() = identity.displayName
+  val platform: String get() = identity.platform
+  val publicKey: String get() = identity.publicKey
+}
+
 data class WireFrame(
   val kind: FrameKind,
   val senderID: String,

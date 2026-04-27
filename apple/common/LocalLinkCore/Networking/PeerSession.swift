@@ -13,12 +13,22 @@ public final class PeerSession: @unchecked Sendable, Identifiable {
   public let endpointDescription: String
 
   private let local: LocalDeviceIdentity
+  private let listenPort: UInt16?
   private let queue: DispatchQueue
   private var receiveBuffer = Data()
   private var sessionCrypto: SessionCrypto?
   private var stateChangeHandlers: [@Sendable (NWConnection.State) -> Void] = []
 
   public private(set) var remoteIdentity: DeviceIdentity?
+  public private(set) var remoteListenPort: UInt16?
+  public var remoteHost: String? {
+    guard case let .hostPort(host, _) = connection.endpoint else { return nil }
+    return "\(host)"
+  }
+  public var remoteDirectEndpoint: NWEndpoint? {
+    guard let remoteHost, let remoteListenPort, let port = NWEndpoint.Port(rawValue: remoteListenPort) else { return nil }
+    return .hostPort(host: NWEndpoint.Host(remoteHost), port: port)
+  }
   public var onRemoteIdentity: (@Sendable (DeviceIdentity) -> Void)?
   public var onFrame: (@Sendable (WireFrame, DeviceIdentity?) -> Void)?
   public var onStateChange: (@Sendable (NWConnection.State) -> Void)?
@@ -27,10 +37,12 @@ public final class PeerSession: @unchecked Sendable, Identifiable {
   public init(
     connection: NWConnection,
     local: LocalDeviceIdentity,
+    listenPort: UInt16? = nil,
     queue: DispatchQueue = DispatchQueue(label: "LocalLink.PeerSession")
   ) {
     self.connection = connection
     self.local = local
+    self.listenPort = listenPort
     self.queue = queue
     self.endpointDescription = String(describing: connection.endpoint)
   }
@@ -58,7 +70,11 @@ public final class PeerSession: @unchecked Sendable, Identifiable {
   public func sendHello() {
     do {
       let payload = try JSONEncoder.localLink.encode(local.identity)
-      try send(kind: .hello, payload: payload)
+      var metadata: [String: String] = [:]
+      if let listenPort {
+        metadata["listenPort"] = String(listenPort)
+      }
+      try send(kind: .hello, metadata: metadata, payload: payload)
     } catch {
       onError?(error)
     }
@@ -233,6 +249,7 @@ public final class PeerSession: @unchecked Sendable, Identifiable {
       do {
         let identity = try JSONDecoder.localLink.decode(DeviceIdentity.self, from: frame.payload)
         remoteIdentity = identity
+        remoteListenPort = frame.header.metadata["listenPort"].flatMap { UInt16($0) }
         sessionCrypto = try? SessionCrypto(
           localPrivateKeyData: local.privateKeyData,
           remotePublicKeyBase64: identity.publicKey

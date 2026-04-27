@@ -8,18 +8,22 @@ public sealed class PeerSession : IDisposable
 {
     private readonly TcpClient client;
     private readonly LocalDeviceIdentity local;
+    private readonly int listenPort;
     private readonly CancellationTokenSource cancellation = new();
     private readonly List<byte> receiveBuffer = new();
     private readonly SemaphoreSlim sendLock = new(1, 1);
     private SessionCrypto? crypto;
 
-    public PeerSession(TcpClient client, LocalDeviceIdentity local)
+    public PeerSession(TcpClient client, LocalDeviceIdentity local, int listenPort = 0)
     {
         this.client = client;
         this.local = local;
+        this.listenPort = listenPort;
     }
 
     public DeviceIdentity? RemoteIdentity { get; private set; }
+    public string RemoteHost => (client.Client.RemoteEndPoint as System.Net.IPEndPoint)?.Address.ToString() ?? "";
+    public int RemoteListenPort { get; private set; }
     public string EndpointDescription => client.Client.RemoteEndPoint?.ToString() ?? "connected";
 
     public event Action<PeerSession, DeviceIdentity>? HelloReceived;
@@ -36,7 +40,10 @@ public sealed class PeerSession : IDisposable
     public async Task SendHelloAsync()
     {
         var payload = JsonSerializer.SerializeToUtf8Bytes(local.identity, LocalLinkJson.Options);
-        await SendAsync(FrameKind.hello, payload: payload);
+        var metadata = listenPort > 0
+            ? new Dictionary<string, string> { ["listenPort"] = listenPort.ToString() }
+            : new Dictionary<string, string>();
+        await SendAsync(FrameKind.hello, metadata: metadata, payload: payload);
     }
 
     public Task SendPairRequestAsync(string code) =>
@@ -208,6 +215,11 @@ public sealed class PeerSession : IDisposable
             if (identity is not null)
             {
                 RemoteIdentity = identity;
+                if (clearFrame.Header.metadata.TryGetValue("listenPort", out var listenPortText) &&
+                    int.TryParse(listenPortText, out var remoteListenPort))
+                {
+                    RemoteListenPort = remoteListenPort;
+                }
                 crypto = TryMakeCrypto(identity);
                 HelloReceived?.Invoke(this, identity);
             }

@@ -26,6 +26,9 @@ public final class LocalLinkAppModel {
   public var pairingPrompt: PairingPrompt?
   public var lastErrorMessage: String?
   public private(set) var isRunning = false
+  public var connectionAddresses: [String] {
+    service?.connectionAddresses ?? []
+  }
 
   @ObservationIgnored private let identityStore: DeviceIdentityStoring
   @ObservationIgnored private let trustedStore: TrustedPeerStoring
@@ -126,7 +129,9 @@ public final class LocalLinkAppModel {
 
   private func completePairing(with identity: DeviceIdentity) {
     do {
-      let peer = TrustedPeer(identity: identity)
+      let endpoint = discoveredPeers.first { $0.identity.deviceID == identity.deviceID }?.endpoint
+      let (host, port) = hostPort(from: endpoint)
+      let peer = trustedPeer(identity: identity, lastHost: host, lastPort: port)
       try trustedStore.saveTrustedPeer(peer)
       trustedPeers = try trustedStore.loadTrustedPeers()
       discoveredPeers = discoveredPeers.map { discovered in
@@ -172,6 +177,28 @@ public final class LocalLinkAppModel {
     _ = session(for: peer)
   }
 
+  public func connectManually(to endpoint: String) {
+    guard let endpoint = parseEndpoint(endpoint) else {
+      lastErrorMessage = "Enter an address like 192.168.1.20:53317."
+      return
+    }
+    let identity = DeviceIdentity(
+      deviceID: "manual:\(endpoint)",
+      displayName: String(describing: endpoint),
+      platform: .unknown,
+      publicKey: ""
+    )
+    let peer = DiscoveredPeer(
+      identity: identity,
+      endpoint: endpoint,
+      endpointDescription: String(describing: endpoint),
+      isTrusted: false
+    )
+    discoveredPeers.removeAll { $0.identity.deviceID == identity.deviceID }
+    discoveredPeers.append(peer)
+    _ = session(for: peer)
+  }
+
   public func disconnect(peerID: String) {
     sessionsByPeerID[peerID]?.sendDisconnect()
     sessionsByPeerID[peerID]?.cancel()
@@ -208,8 +235,8 @@ public final class LocalLinkAppModel {
         platform: trusted.platform,
         publicKey: trusted.publicKey
       ),
-      endpoint: nil,
-      endpointDescription: "Offline",
+      endpoint: directEndpoint(for: trusted),
+      endpointDescription: endpointDescription(for: trusted),
       isTrusted: true
     )
   }
@@ -363,7 +390,11 @@ public final class LocalLinkAppModel {
       Task { @MainActor in
         self?.sessionsByPeerID[identity.deviceID] = session
         self?.connectedPeerIDs.insert(identity.deviceID)
-        self?.mergeRemoteIdentity(identity, endpointDescription: session.endpointDescription)
+        self?.mergeRemoteIdentity(
+          identity,
+          endpoint: session.remoteDirectEndpoint,
+          endpointDescription: session.endpointDescription
+        )
         if self?.pendingPairRequests.remove(identity.deviceID) != nil {
           let code = self?.pairingCode(for: identity)
           if let code {
@@ -526,10 +557,13 @@ public final class LocalLinkAppModel {
         merged.append(existing)
       }
     }
+    for peer in merged where peer.isTrusted {
+      saveTrustedEndpointIfNeeded(for: peer)
+    }
     discoveredPeers = merged
   }
 
-  private func mergeRemoteIdentity(_ identity: DeviceIdentity, endpointDescription: String) {
+  private func mergeRemoteIdentity(_ identity: DeviceIdentity, endpoint: NWEndpoint?, endpointDescription: String) {
     let trusted = trustedPeers.contains { $0.deviceID == identity.deviceID && $0.publicKey == identity.publicKey }
     let previousSelection = selectedPeerID
     let matchedPlaceholder = discoveredPeers.first {
@@ -537,15 +571,86 @@ public final class LocalLinkAppModel {
     }
     let peer = DiscoveredPeer(
       identity: identity,
-      endpoint: matchedPlaceholder?.endpoint,
+      endpoint: endpoint ?? matchedPlaceholder?.endpoint,
       endpointDescription: endpointDescription,
       isTrusted: trusted
     )
     discoveredPeers.removeAll { $0.identity.deviceID == identity.deviceID || $0.endpointDescription == endpointDescription }
     discoveredPeers.append(peer)
+    saveTrustedEndpointIfNeeded(for: peer)
     if previousSelection == matchedPlaceholder?.identity.deviceID {
       selectedPeerID = identity.deviceID
     }
+  }
+
+  private func trustedPeer(identity: DeviceIdentity, lastHost: String?, lastPort: UInt16?) -> TrustedPeer {
+    let existing = trustedPeers.first { $0.deviceID == identity.deviceID }
+    return TrustedPeer(
+      identity: identity,
+      pairedAt: existing?.pairedAt ?? Date(),
+      lastSeenAt: Date(),
+      lastHost: lastHost ?? existing?.lastHost,
+      lastPort: lastPort ?? existing?.lastPort
+    )
+  }
+
+  private func saveTrustedEndpointIfNeeded(for peer: DiscoveredPeer) {
+    guard
+      let trusted = trustedPeers.first(where: { $0.deviceID == peer.identity.deviceID && $0.publicKey == peer.identity.publicKey })
+    else {
+      return
+    }
+    let (host, port) = hostPort(from: peer.endpoint)
+    guard host != nil || port != nil else { return }
+    guard trusted.lastHost != host || trusted.lastPort != port else { return }
+
+    do {
+      try trustedStore.saveTrustedPeer(trustedPeer(identity: peer.identity, lastHost: host, lastPort: port))
+      trustedPeers = try trustedStore.loadTrustedPeers()
+    } catch {
+      lastErrorMessage = error.localizedDescription
+    }
+  }
+
+  private func directEndpoint(for trusted: TrustedPeer) -> NWEndpoint? {
+    guard
+      let host = trusted.lastHost,
+      let portValue = trusted.lastPort,
+      let port = NWEndpoint.Port(rawValue: portValue)
+    else {
+      return nil
+    }
+    return .hostPort(host: NWEndpoint.Host(host), port: port)
+  }
+
+  private func endpointDescription(for trusted: TrustedPeer) -> String {
+    guard let host = trusted.lastHost, let port = trusted.lastPort else { return "Offline" }
+    return "\(host):\(port)"
+  }
+
+  private func hostPort(from endpoint: NWEndpoint?) -> (String?, UInt16?) {
+    guard case let .hostPort(host, port) = endpoint else { return (nil, nil) }
+    return ("\(host)", port.rawValue)
+  }
+
+  private func parseEndpoint(_ text: String) -> NWEndpoint? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard trimmed.isEmpty == false else { return nil }
+    let defaultPort: UInt16 = 53317
+    let hostText: String
+    let portValue: UInt16
+
+    if let separator = trimmed.lastIndex(of: ":") {
+      hostText = String(trimmed[..<separator]).trimmingCharacters(in: CharacterSet(charactersIn: "[] "))
+      guard let parsedPort = UInt16(trimmed[trimmed.index(after: separator)...]) else { return nil }
+      portValue = parsedPort
+    } else {
+      hostText = trimmed
+      portValue = defaultPort
+    }
+
+    guard hostText.isEmpty == false, let port = NWEndpoint.Port(rawValue: portValue) else { return nil }
+    return .hostPort(host: NWEndpoint.Host(hostText), port: port)
   }
 
   private func canSend(to identity: DeviceIdentity) -> Bool {
