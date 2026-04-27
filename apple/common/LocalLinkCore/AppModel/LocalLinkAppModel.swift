@@ -26,9 +26,7 @@ public final class LocalLinkAppModel {
   public var pairingPrompt: PairingPrompt?
   public var lastErrorMessage: String?
   public private(set) var isRunning = false
-  public var connectionAddresses: [String] {
-    service?.connectionAddresses ?? []
-  }
+  public private(set) var connectionAddresses: [String] = []
 
   @ObservationIgnored private let identityStore: DeviceIdentityStoring
   @ObservationIgnored private let trustedStore: TrustedPeerStoring
@@ -77,8 +75,12 @@ public final class LocalLinkAppModel {
       service.onError = { [weak self] error in
         Task { @MainActor in self?.lastErrorMessage = error.localizedDescription }
       }
+      service.onConnectionAddressesChanged = { [weak self] addresses in
+        Task { @MainActor in self?.connectionAddresses = addresses }
+      }
       try service.start()
       self.service = service
+      connectionAddresses = service.connectionAddresses
       isRunning = true
     } catch {
       lastErrorMessage = error.localizedDescription
@@ -89,6 +91,7 @@ public final class LocalLinkAppModel {
     clearAllEphemeralTransfers()
     service?.stop()
     service = nil
+    connectionAddresses = []
     sessionsByPeerID.removeAll()
     connectedPeerIDs.removeAll()
     isRunning = false

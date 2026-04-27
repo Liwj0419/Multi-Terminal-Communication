@@ -18,8 +18,9 @@ public final class BonjourPeerService: @unchecked Sendable {
   public var onDiscoveredPeersChanged: (@Sendable ([DiscoveredPeer]) -> Void)?
   public var onSession: (@Sendable (PeerSession) -> Void)?
   public var onError: (@Sendable (Error) -> Void)?
+  public var onConnectionAddressesChanged: (@Sendable ([String]) -> Void)?
   public var connectionAddresses: [String] {
-    guard let listenPort else { return [] }
+    guard let listenPort, listenPort > 0 else { return [] }
     return Self.localIPv4Addresses().map { "\($0):\(listenPort)" }
   }
 
@@ -50,7 +51,12 @@ public final class BonjourPeerService: @unchecked Sendable {
   }
 
   private func startListening() throws {
-    let listener = (try? NWListener(using: .tcp, on: Self.preferredPort)) ?? (try NWListener(using: .tcp))
+    let listener: NWListener
+    do {
+      listener = try NWListener(using: .tcp, on: Self.preferredPort)
+    } catch {
+      listener = try NWListener(using: .tcp)
+    }
     var txt: [String: String] = [
       "id": local.identity.deviceID,
       "name": local.identity.displayName,
@@ -61,8 +67,8 @@ public final class BonjourPeerService: @unchecked Sendable {
     if let host = Self.localIPv4Addresses().first {
       txt["host"] = host
     }
-    if let port = listener.port {
-      listenPort = port.rawValue
+    if let port = listener.port, port.rawValue > 0 {
+      setListenPort(port.rawValue)
       txt["port"] = String(port.rawValue)
     }
     let txtRecord = NWTXTRecord(txt)
@@ -79,8 +85,15 @@ public final class BonjourPeerService: @unchecked Sendable {
       session.start()
     }
     listener.stateUpdateHandler = { [weak self] state in
-      if case let .failed(error) = state {
+      switch state {
+      case .ready:
+        if let port = listener.port, port.rawValue > 0 {
+          self?.setListenPort(port.rawValue)
+        }
+      case let .failed(error):
         self?.onError?(error)
+      default:
+        break
       }
     }
     listener.start(queue: queue)
@@ -133,6 +146,12 @@ public final class BonjourPeerService: @unchecked Sendable {
       }
     }
     onSession?(session)
+  }
+
+  private func setListenPort(_ port: UInt16) {
+    guard port > 0, listenPort != port else { return }
+    listenPort = port
+    onConnectionAddressesChanged?(connectionAddresses)
   }
 
   private func identity(for result: NWBrowser.Result) -> DeviceIdentity {
@@ -195,14 +214,19 @@ public final class BonjourPeerService: @unchecked Sendable {
     guard getifaddrs(&interfaces) == 0, let first = interfaces else { return [] }
     defer { freeifaddrs(interfaces) }
 
-    var addresses: [String] = []
+    var candidates: [(name: String, address: String, priority: Int)] = []
     var pointer: UnsafeMutablePointer<ifaddrs>? = first
     while let current = pointer {
       defer { pointer = current.pointee.ifa_next }
       let flags = Int32(current.pointee.ifa_flags)
+      let interfaceName = String(cString: current.pointee.ifa_name)
       guard
+        isPhysicalLANInterface(interfaceName),
         flags & IFF_UP != 0,
+        flags & IFF_RUNNING != 0,
+        flags & IFF_BROADCAST != 0,
         flags & IFF_LOOPBACK == 0,
+        flags & IFF_POINTOPOINT == 0,
         let address = current.pointee.ifa_addr,
         address.pointee.sa_family == UInt8(AF_INET)
       else {
@@ -220,10 +244,38 @@ public final class BonjourPeerService: @unchecked Sendable {
         NI_NUMERICHOST
       )
       if result == 0 {
-        addresses.append(String(cString: hostname))
+        let address = String(decoding: hostname.prefix { $0 != 0 }.map(UInt8.init), as: UTF8.self)
+        if isUsableLANIPv4(address) {
+          candidates.append((interfaceName, address, interfacePriority(interfaceName)))
+        }
       }
     }
-    return addresses
+    guard let selected = candidates.sorted(by: {
+      if $0.priority == $1.priority {
+        return $0.name < $1.name
+      }
+      return $0.priority < $1.priority
+    }).first else {
+      return []
+    }
+    return [selected.address]
+  }
+
+  private static func isPhysicalLANInterface(_ name: String) -> Bool {
+    name.hasPrefix("en")
+  }
+
+  private static func interfacePriority(_ name: String) -> Int {
+    if name == "en0" {
+      return 0
+    }
+    return 10
+  }
+
+  private static func isUsableLANIPv4(_ address: String) -> Bool {
+    !address.hasPrefix("0.") &&
+    !address.hasPrefix("127.") &&
+    !address.hasPrefix("169.254.")
   }
 }
 

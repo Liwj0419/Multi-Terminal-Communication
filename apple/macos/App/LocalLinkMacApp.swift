@@ -26,7 +26,7 @@ struct LocalLinkMacApp: App {
 
     Settings {
       MacSettingsView(model: model)
-        .frame(width: 440)
+        .frame(minWidth: 680, idealWidth: 720, minHeight: 520, idealHeight: 560)
     }
   }
 }

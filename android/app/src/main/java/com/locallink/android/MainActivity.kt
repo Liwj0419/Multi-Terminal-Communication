@@ -2,7 +2,10 @@ package com.locallink.android
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.ContentValues
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
@@ -137,14 +140,10 @@ class MainActivity : Activity() {
           setPadding(dp(14), dp(8), dp(14), dp(8))
           background = rounded(Color.rgb(246, 248, 252), dp(12), line)
         }
-        addView(nameInput, blockParams(top = dp(10)))
-        addView(
-          primaryButton("Save Name", true) {
+        addView(settingRow("Name", nameInput, primaryButton("Save", true) {
             manager.updateDeviceName(nameInput.text.toString())
             Toast.makeText(this@MainActivity, "Device name saved", Toast.LENGTH_SHORT).show()
-          },
-          blockParams(top = dp(10))
-        )
+          }), blockParams(top = dp(10)))
         addView(label("ID ${manager.local.identity.deviceID.take(8)}", muted, 13f, false), blockParams(top = dp(8)))
       }
     )
@@ -153,7 +152,21 @@ class MainActivity : Activity() {
     content.addView(
       card().apply {
         val addresses = manager.connectionAddresses()
-        addView(label(if (addresses.isEmpty()) "Start LocalLink to show this device address." else addresses.joinToString("\n"), muted, 13f, false))
+        val addressText = label(
+          if (addresses.isEmpty()) "Start LocalLink to show this device address." else addresses.first(),
+          muted,
+          13f,
+          false
+        ).apply {
+          typeface = Typeface.MONOSPACE
+        }
+        val copyButton = addresses.firstOrNull()?.let { address ->
+          actionButton("Copy", true) {
+            copyText(address)
+            Toast.makeText(this@MainActivity, "Address copied", Toast.LENGTH_SHORT).show()
+          }
+        }
+        addView(settingRow("This device", addressText, copyButton))
         val endpointInput = EditText(this@MainActivity).apply {
           hint = "192.168.1.20:53317"
           textSize = 16f
@@ -162,15 +175,11 @@ class MainActivity : Activity() {
           setPadding(dp(14), dp(8), dp(14), dp(8))
           background = rounded(Color.rgb(246, 248, 252), dp(12), line)
         }
-        addView(endpointInput, blockParams(top = dp(10)))
-        addView(
-          primaryButton("Connect Manually", true) {
+        addView(settingRow("Manual", endpointInput, primaryButton("Connect", true) {
             manager.connectManually(endpointInput.text.toString())
             showingSettings = false
             render()
-          },
-          blockParams(top = dp(10))
-        )
+          }), blockParams(top = dp(10)))
       }
     )
 
@@ -618,6 +627,34 @@ class MainActivity : Activity() {
       "windows" -> "W"
       else -> "?"
     }
+
+  private fun settingRow(title: String, value: View, action: View? = null): LinearLayout =
+    LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      addView(label(title, muted, 13f, false))
+      val row = LinearLayout(this@MainActivity).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+      }
+      row.addView(
+        value,
+        LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+      )
+      if (action != null) {
+        row.addView(
+          action,
+          LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(42)).apply {
+            setMargins(dp(10), 0, 0, 0)
+          }
+        )
+      }
+      addView(row, blockParams(top = dp(6)))
+    }
+
+  private fun copyText(text: String) {
+    val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    clipboard.setPrimaryClip(ClipData.newPlainText("LocalLink address", text))
+  }
 
   private fun sectionTitle(text: String): TextView = label(text, ink, 19f, true).apply {
     setPadding(0, dp(18), 0, dp(8))

@@ -343,24 +343,33 @@ public partial class MainWindow : Window
         {
             Owner = this,
             Title = "Settings",
-            Width = 520,
-            Height = 560,
+            Width = 720,
+            Height = 620,
+            MinWidth = 680,
+            MinHeight = 520,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
             Background = page
         };
         var stack = new StackPanel { Margin = new Thickness(22) };
         stack.Children.Add(PanelTitle("This Device"));
-        var name = new TextBox { Text = model.LocalIdentity.displayName, Height = 36, Margin = new Thickness(0, 8, 0, 8), VerticalContentAlignment = VerticalAlignment.Center };
-        stack.Children.Add(name);
-        stack.Children.Add(ActionButton("Save Name", true, () => model.UpdateDeviceName(name.Text), false));
+        var name = new TextBox { Text = model.LocalIdentity.displayName, Height = 36, VerticalContentAlignment = VerticalAlignment.Center, BorderBrush = line, Background = surface };
+        var nameRow = SettingsRow("Name", name);
+        nameRow.Children.Add(ActionButton("Save", true, () => model.UpdateDeviceName(name.Text), false));
+        stack.Children.Add(nameRow);
         stack.Children.Add(Text($"ID {model.LocalIdentity.deviceID[..8]}", muted, 13));
         stack.Children.Add(SectionTitle("Connection"));
         var addresses = model.ConnectionAddresses.ToList();
-        stack.Children.Add(Text(addresses.Count == 0 ? "Start LocalLink to show this device address." : string.Join("\n", addresses), muted, 13));
+        var addressText = Text(addresses.Count == 0 ? "Start LocalLink to show this device address." : addresses[0], muted, 13);
+        addressText.FontFamily = new FontFamily("Consolas");
+        var addressRow = SettingsRow("This PC", addressText);
+        if (addresses.Count > 0)
+        {
+            addressRow.Children.Add(ActionButton("Copy", true, () => Clipboard.SetText(addresses[0]), false));
+        }
+        stack.Children.Add(addressRow);
         var manual = new TextBox
         {
             Height = 36,
-            Margin = new Thickness(0, 8, 0, 8),
             VerticalContentAlignment = VerticalAlignment.Center,
             BorderBrush = line,
             Background = surface
@@ -373,32 +382,69 @@ public partial class MainWindow : Window
                 window.Close();
             }
         };
-        stack.Children.Add(manual);
-        stack.Children.Add(ActionButton("Connect Manually", true, () =>
+        var manualRow = SettingsRow("Manual", manual);
+        manualRow.Children.Add(ActionButton("Connect", true, () =>
         {
             model.ConnectManually(manual.Text);
             window.Close();
         }, false));
+        stack.Children.Add(manualRow);
         stack.Children.Add(SectionTitle("Trusted Devices"));
+        if (model.TrustedPeers.Count == 0)
+        {
+            stack.Children.Add(EmptyCard("No paired devices"));
+        }
         foreach (var peer in model.TrustedPeers)
         {
-            var card = new StackPanel();
-            card.Children.Add(Text(peer.displayName, ink, 15, true));
-            card.Children.Add(Text($"{peer.platform}  {peer.deviceID[..8]}", muted, 13));
+            var card = new Grid();
+            card.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            card.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var details = new StackPanel();
+            details.Children.Add(Text(peer.displayName, ink, 15, true));
+            details.Children.Add(Text($"{peer.platform}  {peer.deviceID[..8]}", muted, 13));
             if (!string.IsNullOrWhiteSpace(peer.lastHost) && peer.lastPort > 0)
             {
-                card.Children.Add(Text($"Last endpoint {peer.lastHost}:{peer.lastPort}", muted, 12));
+                details.Children.Add(Text($"Last endpoint {peer.lastHost}:{peer.lastPort}", muted, 12));
             }
-            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
+            Grid.SetColumn(details, 0);
+            card.Children.Add(details);
+            var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(16, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
             actions.Children.Add(ActionButton("Clear Messages", true, () => model.ClearMessages(peer.deviceID), false));
             actions.Children.Add(ActionButton("Clear Transfers", true, () => model.ClearTransfers(peer.deviceID), false));
             actions.Children.Add(ActionButton("Forget", true, () => model.Forget(peer.deviceID), true));
+            Grid.SetColumn(actions, 1);
             card.Children.Add(actions);
             stack.Children.Add(Card(card));
         }
         window.Content = new ScrollViewer { Content = stack };
         window.ShowDialog();
         Render();
+    }
+
+    private StackPanel SettingsRow(string label, UIElement content)
+    {
+        var row = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Margin = new Thickness(0, 8, 0, 8),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        row.Children.Add(new TextBlock
+        {
+            Text = label,
+            Width = 84,
+            Foreground = muted,
+            TextAlignment = TextAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 12, 0)
+        });
+        if (content is FrameworkElement element)
+        {
+            element.MinWidth = 360;
+            element.VerticalAlignment = VerticalAlignment.Center;
+        }
+        row.Children.Add(content);
+        return row;
     }
 
     private void ShowPairRequest(DeviceIdentity identity, string code)

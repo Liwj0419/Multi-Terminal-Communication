@@ -205,6 +205,7 @@ class LocalLinkManager(private val context: Context) {
 
   fun connectionAddresses(): List<String> {
     val port = server?.localPort ?: return emptyList()
+    if (port <= 0) return emptyList()
     return localIPv4Addresses().map { "$it:$port" }
   }
 
@@ -265,11 +266,42 @@ class LocalLinkManager(private val context: Context) {
 
   private fun localIPv4Addresses(): List<String> =
     NetworkInterface.getNetworkInterfaces().asSequence()
-      .filter { it.isUp && !it.isLoopback && !it.isVirtual }
-      .flatMap { it.inetAddresses.asSequence() }
-      .filterIsInstance<Inet4Address>()
-      .mapNotNull { it.hostAddress }
+      .filter { isPhysicalLanInterface(it) }
+      .flatMap { network ->
+        network.inetAddresses.asSequence()
+          .filterIsInstance<Inet4Address>()
+          .mapNotNull { address ->
+            address.hostAddress
+              ?.takeIf { isUsableLanIPv4(it) }
+              ?.let { Triple(interfacePriority(network.name), network.name, it) }
+          }
+      }
+      .sortedWith(compareBy<Triple<Int, String, String>> { it.first }.thenBy { it.second })
+      .take(1)
+      .map { it.third }
       .toList()
+
+  private fun isPhysicalLanInterface(network: NetworkInterface): Boolean {
+    val name = network.name.lowercase()
+    return network.isUp &&
+      !network.isLoopback &&
+      !network.isVirtual &&
+      !network.isPointToPoint &&
+      (name.startsWith("wlan") || name.startsWith("eth"))
+  }
+
+  private fun interfacePriority(name: String): Int =
+    when {
+      name.equals("wlan0", ignoreCase = true) -> 0
+      name.startsWith("wlan", ignoreCase = true) -> 1
+      name.equals("eth0", ignoreCase = true) -> 10
+      else -> 20
+    }
+
+  private fun isUsableLanIPv4(address: String): Boolean =
+    !address.startsWith("0.") &&
+      !address.startsWith("127.") &&
+      !address.startsWith("169.254.")
 
   private fun discover() {
     val listener = object : NsdManager.DiscoveryListener {

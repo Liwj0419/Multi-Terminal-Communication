@@ -373,10 +373,6 @@ public sealed class MdnsPeerService : IDisposable
         var instanceName = $"{instance}.{ServiceType}";
         var hostName = $"{local.identity.deviceID.Replace("-", "").ToLowerInvariant()}.local";
         var addresses = LocalIPv4Addresses().ToList();
-        if (addresses.Count == 0)
-        {
-            addresses.Add(IPAddress.Loopback);
-        }
 
         var writer = new DnsWriter();
         writer.WriteUInt16(0);
@@ -401,7 +397,10 @@ public sealed class MdnsPeerService : IDisposable
             record.WriteText("platform=windows");
             record.WriteText($"version={local.identity.protocolVersion}");
             record.WriteText($"publicKey={local.identity.publicKey}");
-            record.WriteText($"host={addresses[0]}");
+            if (addresses.Count > 0)
+            {
+                record.WriteText($"host={addresses[0]}");
+            }
             record.WriteText($"port={port}");
         });
         foreach (var address in addresses)
@@ -452,11 +451,11 @@ public sealed class MdnsPeerService : IDisposable
 
     private static IEnumerable<IPAddress> LocalIPv4Addresses()
     {
+        var candidates = new List<(IPAddress Address, int Priority, string Name)>();
         foreach (var network in NetworkInterface.GetAllNetworkInterfaces())
         {
             if (network.OperationalStatus != OperationalStatus.Up ||
-                network.NetworkInterfaceType == NetworkInterfaceType.Loopback ||
-                network.NetworkInterfaceType == NetworkInterfaceType.Tunnel ||
+                !IsPhysicalLanInterface(network) ||
                 !network.SupportsMulticast)
             {
                 continue;
@@ -464,12 +463,64 @@ public sealed class MdnsPeerService : IDisposable
 
             foreach (var address in network.GetIPProperties().UnicastAddresses)
             {
-                if (address.Address.AddressFamily == AddressFamily.InterNetwork)
+                if (address.Address.AddressFamily == AddressFamily.InterNetwork &&
+                    IsUsableLanAddress(address.Address))
                 {
-                    yield return address.Address;
+                    candidates.Add((address.Address, InterfacePriority(network), network.Name));
                 }
             }
         }
+
+        foreach (var candidate in candidates
+                     .OrderBy(candidate => candidate.Priority)
+                     .ThenBy(candidate => candidate.Name)
+                     .Take(1))
+        {
+            yield return candidate.Address;
+        }
+    }
+
+    private static bool IsPhysicalLanInterface(NetworkInterface network)
+    {
+        if (network.NetworkInterfaceType is not (NetworkInterfaceType.Ethernet or NetworkInterfaceType.Wireless80211))
+        {
+            return false;
+        }
+
+        var text = $"{network.Name} {network.Description}".ToLowerInvariant();
+        string[] blocked =
+        {
+            "virtual",
+            "vpn",
+            "tap",
+            "tun",
+            "tailscale",
+            "wireguard",
+            "zerotier",
+            "hyper-v",
+            "vmware",
+            "virtualbox",
+            "docker",
+            "wsl",
+            "npcap",
+            "loopback",
+            "bridge"
+        };
+        return !blocked.Any(text.Contains);
+    }
+
+    private static int InterfacePriority(NetworkInterface network)
+    {
+        return network.NetworkInterfaceType == NetworkInterfaceType.Wireless80211 ? 0 : 10;
+    }
+
+    private static bool IsUsableLanAddress(IPAddress address)
+    {
+        var bytes = address.GetAddressBytes();
+        return bytes.Length > 0 &&
+               bytes[0] != 0 &&
+               bytes[0] != 127 &&
+               !(bytes[0] == 169 && bytes[1] == 254);
     }
 
     private sealed class PartialPeer
