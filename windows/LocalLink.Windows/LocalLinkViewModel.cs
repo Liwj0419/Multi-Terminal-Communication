@@ -498,20 +498,25 @@ public sealed class LocalLinkViewModel
             return trusted is null ? peer : peer with { isTrusted = true };
         }).ToList();
 
-        var trustedEndpointsChanged = false;
+        var trustedPeersChanged = false;
         foreach (var peer in merged.Where(peer => peer.isTrusted && !string.IsNullOrWhiteSpace(peer.host) && peer.port > 0))
         {
             var trusted = TrustedPeers.FirstOrDefault(item => item.deviceID == peer.identity.deviceID);
-            if (trusted is null || trusted.lastHost == peer.host && trusted.lastPort == peer.port)
+            if (trusted is null ||
+                trusted.displayName == peer.identity.displayName &&
+                trusted.platform == peer.identity.platform &&
+                trusted.publicKey == peer.identity.publicKey &&
+                trusted.lastHost == peer.host &&
+                trusted.lastPort == peer.port)
             {
                 continue;
             }
 
             stores.SaveTrusted(peer.identity, peer.host, peer.port);
-            trustedEndpointsChanged = true;
+            trustedPeersChanged = true;
         }
 
-        if (trustedEndpointsChanged)
+        if (trustedPeersChanged)
         {
             TrustedPeers = new ObservableCollection<TrustedPeer>(stores.LoadTrustedPeers());
         }

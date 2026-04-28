@@ -539,18 +539,8 @@ public final class LocalLinkAppModel {
   private func mergeDiscovered(_ peers: [DiscoveredPeer]) {
     var merged = peers.map { peer in
       var copy = peer
-      if let trusted = trustedPeers.first(where: { copy.identity.displayName.hasPrefix($0.displayName) }) {
-        copy.identity = DeviceIdentity(
-          deviceID: trusted.deviceID,
-          displayName: trusted.displayName,
-          platform: trusted.platform,
-          publicKey: trusted.publicKey
-        )
+      if trustedPeers.contains(where: { $0.deviceID == copy.identity.deviceID && $0.publicKey == copy.identity.publicKey }) {
         copy.isTrusted = true
-      } else {
-        copy.isTrusted = trustedPeers.contains { trusted in
-          trusted.deviceID == copy.identity.deviceID && trusted.publicKey == copy.identity.publicKey
-        }
       }
       return copy
     }
@@ -604,8 +594,9 @@ public final class LocalLinkAppModel {
       return
     }
     let (host, port) = hostPort(from: peer.endpoint)
-    guard host != nil || port != nil else { return }
-    guard trusted.lastHost != host || trusted.lastPort != port else { return }
+    let nameChanged = trusted.displayName != peer.identity.displayName || trusted.platform != peer.identity.platform
+    let endpointChanged = (host != nil || port != nil) && (trusted.lastHost != host || trusted.lastPort != port)
+    guard nameChanged || endpointChanged else { return }
 
     do {
       try trustedStore.saveTrustedPeer(trustedPeer(identity: peer.identity, lastHost: host, lastPort: port))

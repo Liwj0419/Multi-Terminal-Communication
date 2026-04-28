@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -20,11 +21,13 @@ public partial class MainWindow : Window
     private readonly Brush blue = Paint("#16408F");
     private DiscoveredPeer? selectedPeer;
     private PanelKind selectedPanel = PanelKind.Messages;
+    private bool renderPending;
+    private bool renderScheduled;
 
     public MainWindow()
     {
         InitializeComponent();
-        model.Changed += Render;
+        model.Changed += RenderWhenIdle;
         model.Error += message => MessageBox.Show(this, message, "LocalLink", MessageBoxButton.OK, MessageBoxImage.Information);
         model.PairRequested += ShowPairRequest;
         Loaded += (_, _) =>
@@ -37,6 +40,7 @@ public partial class MainWindow : Window
 
     private void Render()
     {
+        renderPending = false;
         Root.Children.Clear();
         Root.ColumnDefinitions.Clear();
         Root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(300) });
@@ -54,6 +58,57 @@ public partial class MainWindow : Window
         var detail = selectedPeer is null ? EmptyDetail() : PeerDetail(model.Resolve(selectedPeer));
         Grid.SetColumn(detail, 2);
         Root.Children.Add(detail);
+    }
+
+    private void RenderWhenIdle()
+    {
+        if (IsUserInteracting())
+        {
+            renderPending = true;
+            SchedulePendingRender();
+            return;
+        }
+
+        Render();
+    }
+
+    private void RenderPendingOnLostFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (renderPending)
+        {
+            SchedulePendingRender();
+        }
+    }
+
+    private bool IsUserInteracting() =>
+        Keyboard.FocusedElement is TextBox ||
+        Mouse.LeftButton == MouseButtonState.Pressed ||
+        Mouse.RightButton == MouseButtonState.Pressed;
+
+    private void SchedulePendingRender()
+    {
+        if (renderScheduled)
+        {
+            return;
+        }
+
+        renderScheduled = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            renderScheduled = false;
+            if (!renderPending)
+            {
+                return;
+            }
+
+            if (IsUserInteracting())
+            {
+                SchedulePendingRender();
+                return;
+            }
+
+            Render();
+        }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
     }
 
     private UIElement Sidebar()
@@ -260,12 +315,14 @@ public partial class MainWindow : Window
             BorderBrush = line,
             Background = surface
         };
+        input.LostKeyboardFocus += RenderPendingOnLostFocus;
         input.KeyDown += (_, e) =>
         {
             if (e.Key == System.Windows.Input.Key.Enter)
             {
                 model.SendText(peer, input.Text);
                 input.Text = "";
+                Render();
             }
         };
         Grid.SetColumn(input, 1);
@@ -275,6 +332,7 @@ public partial class MainWindow : Window
         {
             model.SendText(peer, input.Text);
             input.Text = "";
+            Render();
         }, false);
         Grid.SetColumn(send, 2);
         grid.Children.Add(send);
@@ -353,6 +411,7 @@ public partial class MainWindow : Window
         var stack = new StackPanel { Margin = new Thickness(22) };
         stack.Children.Add(PanelTitle("This Device"));
         var name = new TextBox { Text = model.LocalIdentity.displayName, Height = 36, VerticalContentAlignment = VerticalAlignment.Center, BorderBrush = line, Background = surface };
+        name.LostKeyboardFocus += RenderPendingOnLostFocus;
         var nameRow = SettingsRow("Name", name);
         nameRow.Children.Add(ActionButton("Save", true, () => model.UpdateDeviceName(name.Text), false));
         stack.Children.Add(nameRow);
@@ -374,6 +433,7 @@ public partial class MainWindow : Window
             BorderBrush = line,
             Background = surface
         };
+        manual.LostKeyboardFocus += RenderPendingOnLostFocus;
         manual.KeyDown += (_, e) =>
         {
             if (e.Key == System.Windows.Input.Key.Enter)
